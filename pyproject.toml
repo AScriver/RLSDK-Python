@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "rlsdk_python"
+version = "0.1.0"
+description = ""
+authors = ["MarlburroW <nik0o@hotmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+frida = "^16.2.1"
+Pymem = "^1.13.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
