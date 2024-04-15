@@ -217,6 +217,9 @@ class GameEvent(UObject):
     def get_count_down_time(self):
         return self.sdk.pm.read_int(self.address + 0x02A0)
 
+    def get_goals(self):
+        goals_tarray_address = self.address + 0x08A0
+        return TArray(goals_tarray_address, Goal, sdk=self.sdk).get_items()
 
 class TArray(Pointer):
 
@@ -267,14 +270,18 @@ class FVector(Pointer):
 class FRotator(Pointer):
     size = 0x0C
 
+    def int_to_rad(self, value):
+        # convert signed int (-32768 to 32767) to radian (-pi to pi)
+        return value * 0.00009587379924285
+    
     def get_pitch(self):
-        return self.sdk.pm.read_int(self.address)
+        return self.int_to_rad(self.sdk.pm.read_int(self.address))
     
     def get_yaw(self):
-        return self.sdk.pm.read_int(self.address + 0x4)
+        return self.int_to_rad(self.sdk.pm.read_int(self.address + 0x4))
     
     def get_roll(self):
-        return self.sdk.pm.read_int(self.address + 0x8)
+        return self.int_to_rad(self.sdk.pm.read_int(self.address + 0x8))
 
     
     def get_pyr(self) -> Tuple[int, int, int]:
@@ -406,6 +413,63 @@ class Vehicle(Pawn):
     def get_boost_component(self):
         boost_component_address = self.sdk.pm.read_ulonglong(self.address + 0x0840)
         return BoostComponent(boost_component_address, sdk=self.sdk)
+
+    def get_vehicle_sim(self):
+        vehicle_sim_address = self.sdk.pm.read_ulonglong(self.address + 0x07B0)
+        return VehicleSim(vehicle_sim_address, sdk=self.sdk)
+
+    def has_wheel_contact(self):
+        vehicle_sim = self.get_vehicle_sim()
+        wheels = vehicle_sim.get_wheels()
+        for wheel in wheels:
+            if wheel.get_contact_data().get_has_contact():
+                return True
+        return False
+
+
+
+class VehicleSim(UObject):
+    size = 0x0164
+
+    def get_wheels(self):
+        wheels_address = self.address + 0x00A0
+        return TArray(wheels_address, Wheel, sdk=self.sdk).get_items()
+    
+    def get_vehicle(self):
+        vehicle_address = self.sdk.pm.read_ulonglong(self.address + 0x0130)
+        return Vehicle(vehicle_address, sdk=self.sdk)
+    
+    def get_car(self):
+        car_address = self.sdk.pm.read_ulonglong(self.address +0x0138)
+        return Car(car_address, sdk=self.sdk)
+
+
+
+class FWheelContactData(Pointer):
+    size = 0x0050
+
+    def get_has_contact(self):
+        return self.sdk.pm.read_int(self.address) & 1
+    
+    def get_has_contact_with_world_geometry(self):
+        return (self.sdk.pm.read_int(self.address) >> 1) & 1
+    
+    def get_has_contact_change_time(self):
+        return self.sdk.pm.read_float(self.address + 0x4)
+    
+   
+class Wheel(UObject):
+    size = 0x01E0
+
+    def get_contact_data(self):
+        contact_data_address = self.address +  0x0160
+        return FWheelContactData(contact_data_address, sdk=self.sdk)
+    
+    def get_wheel_index(self):
+        return self.sdk.pm.read_int(self.address + 0x0158)
+    
+
+
 
 class Car(Vehicle):
     size = 0x0B48
@@ -549,11 +613,180 @@ class FName(Pointer):
         if name_entry:
             return name_entry.get_name()
         return None
+    
 
-class BoostPad(Actor):
 
-    def get_amount(self):
+
+
+
+class FPickupData(Pointer):
+    size = 0x0009
+
+    def get_instigator(self):
+        address = self.sdk.pm.read_ulonglong(self.address)
+        return Car(address, sdk=self.sdk)
+    
+    def get_picked_up(self):
+        return self.sdk.pm.read_int(self.address + 0x8) & 1
+
+
+
+class VehiclePickup(Actor):
+    def get_pickup_data(self):
+        return FPickupData(self.address + 0x02A8, sdk=self.sdk)
+
+class VehiclePickupBoost(VehiclePickup):
+    def get_boost_amount(self):
         return self.sdk.pm.read_float(self.address + 0x02F0)
+    
+    def get_boost_type(self):
+        return self.sdk.pm.read_uchar(self.address + 0x0300)
+    
 
 
+# Following classes are not pointing to any memory address, they are just data containers
+    
 
+class Field():
+    def __init__(self, sdk) -> None:
+        # create 34  bppstpads
+        self.boostpads = [BoostPad(x, y, z, is_big) for x, y, z, is_big in BoostPad.BOOST_LOCATIONS]
+        self.sdk = sdk
+        pass
+
+
+    def reset_boostpads(self):
+        for pad in self.boostpads:
+            pad.reset()
+
+
+    def find_boostpad_by_location(self, x, y, z, tolerance=100.0):
+        target_location = Vector(x, y, z)
+        for pad in self.boostpads:
+            if pad.location.distance_to(target_location) <= tolerance:
+                return pad
+        return None
+    
+    def find_boostpad_from_pickup(self, pickup: VehiclePickupBoost):
+        x, y, z = pickup.get_location().get_xyz()
+        return self.find_boostpad_by_location(x, y, z)
+    
+
+
+class FBox(Pointer):
+    size = 0x0019
+
+    def get_min(self):
+        min_address = self.address
+        return FVector(min_address, sdk=self.sdk)
+    
+    def get_max(self):
+        max_address = self.address + 0x000C
+        return FVector(max_address, sdk=self.sdk)
+    
+    def is_valid(self):
+        return self.sdk.pm.read_uchar(self.address + 0x0018)
+  
+
+class Goal(UObject):
+    size = 0x01C0
+
+    def get_location(self):
+        location_address = self.address + 0x0138
+        return FVector(location_address, sdk=self.sdk)
+    
+    def get_direction(self):
+        direction_address = self.address + 0x0144
+        return FVector(direction_address, sdk=self.sdk)
+
+    def get_right(self):
+        right_address = self.address + 0x0150
+        return FVector(right_address, sdk=self.sdk)
+
+    def get_up(self):
+        up_address = self.address + 0x015C
+        return FVector(up_address, sdk=self.sdk)
+    
+    def get_rotation(self):
+        rotation_address = self.address + 0x0168
+        return FRotator(rotation_address, sdk=self.sdk)
+
+    def get_team_num(self):
+        return self.sdk.pm.read_uchar(self.address + 0x00DC)
+
+    def get_world_box(self):
+        box_address = self.address + 0x01A4
+        return FBox(box_address, sdk=self.sdk)
+
+    def get_width(self):
+        box = self.get_world_box()
+        min_x, min_y, min_z = box.get_min().get_xyz()
+        max_x, max_y, max_z = box.get_max().get_xyz()
+        return max_x - min_x
+
+    def get_height(self):
+        box = self.get_world_box()
+        min_x, min_y, min_z = box.get_min().get_xyz()
+        max_x, max_y, max_z = box.get_max().get_xyz()
+        return max_y - min_y
+ 
+
+class BoostPad():
+
+    BOOST_LOCATIONS = (
+        (0.0, -4240.0, 70.0, False),
+        (-1792.0, -4184.0, 70.0, False),
+        (1792.0, -4184.0, 70.0, False),
+        (-3072.0, -4096.0, 73.0, True),
+        (3072.0, -4096.0, 73.0, True),
+        (- 940.0, -3308.0, 70.0, False),
+        (940.0, -3308.0, 70.0, False),
+        (0.0, -2816.0, 70.0, False),
+        (-3584.0, -2484.0, 70.0, False),
+        (3584.0, -2484.0, 70.0, False),
+        (-1788.0, -2300.0, 70.0, False),
+        (1788.0, -2300.0, 70.0, False),
+        (-2048.0, -1036.0, 70.0, False),
+        (0.0, -1024.0, 70.0, False),
+        (2048.0, -1036.0, 70.0, False),
+        (-3584.0, 0.0, 73.0, True),
+        (-1024.0, 0.0, 70.0, False),
+        (1024.0, 0.0, 70.0, False),
+        (3584.0, 0.0, 73.0, True),
+        (-2048.0, 1036.0, 70.0, False),
+        (0.0, 1024.0, 70.0, False),
+        (2048.0, 1036.0, 70.0, False),
+        (-1788.0, 2300.0, 70.0, False),
+        (1788.0, 2300.0, 70.0, False),
+        (-3584.0, 2484.0, 70.0, False),
+        (3584.0, 2484.0, 70.0, False),
+        (0.0, 2816.0, 70.0, False),
+        (- 940.0, 3310.0, 70.0, False),
+        (940.0, 3308.0, 70.0, False),
+        (-3072.0, 4096.0, 73.0, True),
+        (3072.0, 4096.0, 73.0, True),
+        (-1792.0, 4184.0, 70.0, False),
+        (1792.0, 4184.0, 70.0, False),
+        (0.0, 4240.0, 70.0, False),
+    )
+
+
+    def __init__(self, x, y, z, is_big = False) -> None:
+        self.is_active = True
+        self.is_big = is_big
+        self.location = Vector(x, y, z)
+        self.picked_up_time = None
+
+    def reset(self):
+        self.is_active = True
+        self.is_big = False
+        self.picked_up_time = None
+
+class Vector():
+    def __init__(self, x=0, y=0, z=0):
+        self.x = x
+        self.y = y
+        self.z = z
+
+    def distance_to(self, other):
+        return ((self.x - other.x) ** 2 + (self.y - other.y) ** 2 + (self.z - other.z) ** 2) ** 0.5
