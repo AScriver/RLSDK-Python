@@ -44,6 +44,7 @@ recv('process_event_address', function onMessage(payload) {
                     const index = arg[0];
                     const type = arg[1];
                     const name = arg[2];
+                    const size = arg[3];
 
                     if (type == "int") {
                         casted_args[name] = args[index].readInt();
@@ -51,19 +52,25 @@ recv('process_event_address', function onMessage(payload) {
                         casted_args[name] = args[index].readU32();
                     } else if (type == "float") {
                         casted_args[name] = args[index].readFloat();
-                    } else if (type == "bool") {
-                        casted_args[name] = args[index].readBool();
-                    } else if (type == "byte") {
-                        casted_args[name] = args[index].readByteArray(1);
-                    } else if (type == "string") {
-                        casted_args[name] = args[index].readCString();
-                    } else if (type == "pointer") {
-                        casted_args[name] = args[index].readPointer();
-                    } else if (type == "object") {
-                        casted_args[name] = args[index].readPointer();
+                    } else if (type == "address") {
+                        casted_args[name] = args[index].toString(16);
+                    } else if (type == "bytes") {
+                        let buffer = args[index].readByteArray(size);
+                        if (buffer) {
+                            let bytes = new Uint8Array(buffer);
+                            let hexString = '';
+                            for (let i = 0; i < bytes.length; i++) {
+                                let byte = bytes[i];
+                                let hex = byte.toString(16);
+                                hexString += (hex.length === 1 ? '0' : '') + hex;
+                            }
+                            casted_args[name] = hexString;
+                        } else {
+                            console.error('Buffer is null');
+                        }
                     } else {
-                        casted_args[name] = args[index].readPointer();
-                    }                    
+                        casted_args[name] = args[index];
+                    }
                     
                 });
 

@@ -6,7 +6,7 @@ import time
 import threading
 from typing import Callable, Any, Protocol
 from .event_handling import Event
-from .events import  EventFunctionHooked, EventTypes, EventPlayerTick, EventRoundActiveStateChanged, EventResetPickups, EventGameEventStarted
+from .events import  EventFunctionHooked, EventTypes, EventPlayerTick, EventRoundActiveStateChanged, EventResetPickups, EventGameEventStarted, EventKeyPressed
 from .game_objects import UClass, UFunction, GameEvent, TArray, UObject, FNameEntry, FName, Field, VehiclePickupBoost
 from .frida_script import frida_script
 import struct
@@ -95,6 +95,7 @@ class RLSDK:
         self.hook_function(FUNCTION_ROUND_ACTIVE_END)
         self.hook_function(FUNCTION_RESET_PICKUPS)
         self.hook_function(FUNCTION_GAMEEVENT_BEGIN_PLAY)
+        self.hook_function(FUNCTION_KEY_PRESS, args_map=[(2, "bytes", "key_params", 0x1c)])
 
         # player tick is conditional because it's called every frame, we don't want hook it if developer doesn't need it
 
@@ -165,6 +166,17 @@ class RLSDK:
             self.field.reset_boostpads()
         elif function_name == FUNCTION_GAMEEVENT_BEGIN_PLAY:
             self.event.fire(EventTypes.ON_GAME_EVENT_STARTED, EventGameEventStarted())
+        elif function_name == FUNCTION_KEY_PRESS:
+            params = event.args['key_params']
+
+            data_bytes = bytes.fromhex(params)
+            fname_entry_id = int.from_bytes(data_bytes[4:8], byteorder='little')
+            key_name = self.get_gname_by_index(fname_entry_id).get_name()
+            ev = EventKeyPressed(data_bytes, key_name)
+
+            self.event.fire(EventTypes.ON_KEY_PRESSED, ev)
+
+   
 
 
 

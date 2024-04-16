@@ -570,17 +570,6 @@ class FNameEntry(Pointer):
         return self.sdk.pm.read_int(self.address + 0x0008)
 
 
-# struct FName
-# {
-# public:
-# 	using ElementType = const wchar_t;
-# 	using ElementPointer = ElementType*;
-
-# private:
-# 	int32_t			FNameEntryId;		// 0x0000 (0x04)
-# 	int32_t			InstanceNumber;		// 0x0004 (0x04)
-
-
 class FName(Pointer):
     size = 0x08
 
@@ -616,9 +605,6 @@ class FName(Pointer):
     
 
 
-
-
-
 class FPickupData(Pointer):
     size = 0x0009
 
@@ -642,36 +628,6 @@ class VehiclePickupBoost(VehiclePickup):
     def get_boost_type(self):
         return self.sdk.pm.read_uchar(self.address + 0x0300)
     
-
-
-# Following classes are not pointing to any memory address, they are just data containers
-    
-
-class Field():
-    def __init__(self, sdk) -> None:
-        # create 34  bppstpads
-        self.boostpads = [BoostPad(x, y, z, is_big) for x, y, z, is_big in BoostPad.BOOST_LOCATIONS]
-        self.sdk = sdk
-        pass
-
-
-    def reset_boostpads(self):
-        for pad in self.boostpads:
-            pad.reset()
-
-
-    def find_boostpad_by_location(self, x, y, z, tolerance=100.0):
-        target_location = Vector(x, y, z)
-        for pad in self.boostpads:
-            if pad.location.distance_to(target_location) <= tolerance:
-                return pad
-        return None
-    
-    def find_boostpad_from_pickup(self, pickup: VehiclePickupBoost):
-        x, y, z = pickup.get_location().get_xyz()
-        return self.find_boostpad_by_location(x, y, z)
-    
-
 
 class FBox(Pointer):
     size = 0x0019
@@ -730,6 +686,39 @@ class Goal(UObject):
         max_x, max_y, max_z = box.get_max().get_xyz()
         return max_y - min_y
  
+        
+
+    
+# Following classes are not pointing to any memory address, they are just data containers
+    
+
+class Field():
+    def __init__(self, sdk) -> None:
+        # create 34  bppstpads
+        self.boostpads = [BoostPad(x, y, z, is_big) for x, y, z, is_big in BoostPad.BOOST_LOCATIONS]
+        self.sdk = sdk
+        pass
+
+
+    def reset_boostpads(self):
+        for pad in self.boostpads:
+            pad.reset()
+
+
+    def find_boostpad_by_location(self, x, y, z, tolerance=100.0):
+        target_location = Vector(x, y, z)
+        for pad in self.boostpads:
+            if pad.location.distance_to(target_location) <= tolerance:
+                return pad
+        return None
+    
+    def find_boostpad_from_pickup(self, pickup: VehiclePickupBoost):
+        x, y, z = pickup.get_location().get_xyz()
+        return self.find_boostpad_by_location(x, y, z)
+    
+
+
+
 
 class BoostPad():
 
@@ -790,3 +779,25 @@ class Vector():
 
     def distance_to(self, other):
         return ((self.x - other.x) ** 2 + (self.y - other.y) ** 2 + (self.z - other.z) ** 2) ** 0.5
+
+
+
+# struct UGameViewportClient_TA_execHandleKeyPress_Params
+# {
+# 	int32_t                                            ControllerId;                                     		// 0x0000 (0x0004) [0x0000000000000080] (CPF_Parm)    
+# 	struct FName                                       Key;                                              		// 0x0004 (0x0008) [0x0000000000000080] (CPF_Parm)    
+# 	uint8_t                                            EventType;                                        		// 0x000C (0x0001) [0x0000000000000080] (CPF_Parm)    
+# 	float                                              AmountDepressed;                                  		// 0x0010 (0x0004) [0x0000000000000080] (CPF_Parm)    
+# 	uint32_t                                           bGamepad : 1;                                     		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] (CPF_OptionalParm | CPF_Parm)
+# 	uint32_t                                           ReturnValue : 1;                                  		// 0x0018 (0x0004) [0x0000000000000580] [0x00000001] (CPF_Parm | CPF_OutParm | CPF_ReturnParm)
+# };
+
+
+
+class KeyPressParams():
+    def __init__(bytes):
+        self.ControllerId = int.from_bytes(bytes[0:4], byteorder='little')
+        self.Key = FName(int.from_bytes(bytes[4:8], byteorder='little'))
+        self.EventType = int.from_bytes(bytes[8:9], byteorder='little')
+        self.bGamepad = int.from_bytes(bytes[13:17], byteorder='little') & 1
+        self.ReturnValue = int.from_bytes(bytes[17:21], byteorder='little') & 1
