@@ -37,7 +37,7 @@ def on_tick(event):
 
             print(f"{player_name} is at {x},{y},{z}")
 
-rlsdk.event.subscribe(EventTypes.ON_PLAYER_TICK,on_tick)
+rlsdk.event.subscribe(EventTypes.ON_PLAYER_TICK, on_tick)
 
 sys.stdin.read()
 
