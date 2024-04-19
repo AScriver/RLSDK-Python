@@ -1,6 +1,6 @@
 import ctypes
 from typing import Tuple
-
+import time
 
 
 class Pointer:
@@ -122,6 +122,9 @@ class GameEvent(UObject):
     def get_max_score(self):
         return self.sdk.pm.read_int(self.address + 0x07DC)
     
+    def get_time_remaining(self):
+        return self.sdk.pm.read_float(self.address + 0x080C)
+        
     def get_seconds_remaining(self):
         return self.sdk.pm.read_int(self.address + 0x0810)
     
@@ -220,6 +223,10 @@ class GameEvent(UObject):
     def get_goals(self):
         goals_tarray_address = self.address + 0x08A0
         return TArray(goals_tarray_address, Goal, sdk=self.sdk).get_items()
+
+    def get_local_players(self):
+        local_players_tarray_address = self.address + 0x0360
+        return TArray(local_players_tarray_address, PlayerController, sdk=self.sdk).get_items()
 
 class TArray(Pointer):
 
@@ -398,6 +405,50 @@ class BoostComponent(Pointer):
     
     def get_start_amount(self):
         return self.sdk.pm.read_float(self.address + 0x0308)
+# Class TAGame.Vehicle_TA
+# // 0x0100 (0x07A8 - 0x08A8)
+# class AVehicle_TA : public ARBActor_TA
+# {
+# public:
+# 	class UCarMeshComponent_TA*                        CarMesh;                                       // 0x07A8 (0x0008) [0x000000000408000B] (CPF_Edit | CPF_Const | CPF_ExportObject | CPF_Component | CPF_EditInline)
+# 	class UVehicleSim_TA*                              VehicleSim;                                    // 0x07B0 (0x0008) [0x0000000004080009] (CPF_Edit | CPF_ExportObject | CPF_Component | CPF_EditInline)
+# 	struct FStickyForceData                            StickyForce;                                   // 0x07B8 (0x0008) [0x0000000000000001] (CPF_Edit)    
+# 	struct FAutoFlipData                               AutoFlip;                                      // 0x07C0 (0x0008) [0x0000000000000001] (CPF_Edit)    
+# 	uint32_t                                           bDriving : 1;                                  // 0x07C8 (0x0004) [0x0000004000002020] [0x00000001] (CPF_Net | CPF_Transient)
+# 	uint32_t                                           bReplicatedHandbrake : 1;                      // 0x07C8 (0x0004) [0x0000000000002022] [0x00000002] (CPF_Const | CPF_Net | CPF_Transient)
+# 	uint32_t                                           bJumped : 1;                                   // 0x07C8 (0x0004) [0x0000008000002000] [0x00000004] (CPF_Transient)
+# 	uint32_t                                           bDoubleJumped : 1;                             // 0x07C8 (0x0004) [0x0000008000002000] [0x00000008] (CPF_Transient)
+# 	uint32_t                                           bOnGround : 1;                                 // 0x07C8 (0x0004) [0x0000004000002000] [0x00000010] (CPF_Transient)
+# 	uint32_t                                           bSuperSonic : 1;                               // 0x07C8 (0x0004) [0x0000004000002000] [0x00000020] (CPF_Transient)
+# 	uint32_t                                           bPodiumMode : 1;                               // 0x07C8 (0x0004) [0x0000000100002020] [0x00000040] (CPF_Net | CPF_Transient)
+# 	uint32_t                                           bHasPostMatchCelebration : 1;                  // 0x07C8 (0x0004) [0x0000008000002020] [0x00000080] (CPF_Net | CPF_Transient)
+# 	struct FVehicleInputs                              Input;                                         // 0x07CC (0x0020) [0x0000000000002002] (CPF_Const | CPF_Transient)
+# 	uint8_t                                            ReplicatedThrottle;                            // 0x07EC (0x0001) [0x0000000000002022] (CPF_Const | CPF_Net | CPF_Transient)
+# 	uint8_t                                            ReplicatedSteer;                               // 0x07ED (0x0001) [0x0000000000002022] (CPF_Const | CPF_Net | CPF_Transient)
+# 	uint8_t                                           UnknownData00[0x2];                            // 0x07EE (0x0002) MISSED OFFSET
+# 	class AAIController_TA*                            AIController;                                  // 0x07F0 (0x0008) [0x0000004000002000] (CPF_Transient)
+# 	class APlayerController_TA*                        PlayerController;                              // 0x07F8 (0x0008) [0x0000004000002000] (CPF_Transient)
+# 	class APRI_TA*                                     PRI;                                           // 0x0800 (0x0008) [0x0000004000002000] (CPF_Transient)
+# 	int32_t                                            VehicleUpdateTag;                              // 0x0808 (0x0004) [0x0000000800002002] (CPF_Const | CPF_Transient)
+# 	uint8_t                                           UnknownData01[0x4];                            // 0x080C (0x0004) MISSED OFFSET
+# 	struct FCarInteractionData                         CarInteraction;                                // 0x0810 (0x0010) [0x0000000000000000]               
+# 	struct FVector                                     LocalCollisionOffset;                          // 0x0820 (0x000C) [0x0000000000002002] (CPF_Const | CPF_Transient)
+# 	struct FVector                                     LocalCollisionExtent;                          // 0x082C (0x000C) [0x0000000000002002] (CPF_Const | CPF_Transient)
+# 	int32_t                                            LastBallTouchFrame;                            // 0x0838 (0x0004) [0x0000000000002000] (CPF_Transient)
+# 	int32_t                                            LastBallImpactFrame;                           // 0x083C (0x0004) [0x0000000000002000] (CPF_Transient)
+# 	class ACarComponent_Boost_TA*                      BoostComponent;                                // 0x0840 (0x0008) [0x0000000000002000] (CPF_Transient)
+# 	class ACarComponent_Dodge_TA*                      DodgeComponent;                                // 0x0848 (0x0008) [0x0000000000002000] (CPF_Transient)
+# 	class ACarComponent_AirControl_TA*                 AirControlComponent;                           // 0x0850 (0x0008) [0x0000000000002000] (CPF_Transient)
+# 	class ACarComponent_Jump_TA*                       JumpComponent;                                 // 0x0858 (0x0008) [0x0000000000002000] (CPF_Transient)
+# 	class ACarComponent_DoubleJump_TA*                 DoubleJumpComponent;                           // 0x0860 (0x0008) [0x0000000000002000] (CPF_Transient)
+# 	int32_t                                            PodiumSpot;                                    // 0x0868 (0x0004) [0x0000008000002020] (CPF_Net | CPF_Transient)
+# 	int32_t                                            PMCAnimIdx;                                    // 0x086C (0x0004) [0x0000008000002020] (CPF_Net | CPF_Transient)
+# 	class UPitchTekDrawingComponent_TA*                PitchTekComponent;                             // 0x0870 (0x0008) [0x000000000408000A] (CPF_Const | CPF_ExportObject | CPF_Component | CPF_EditInline)
+# 	class ULocalPlayerAudioParamsComponent_TA*         LocalPlayerAudioParamsComponent;               // 0x0878 (0x0008) [0x0000000004082008] (CPF_ExportObject | CPF_Transient | CPF_Component | CPF_EditInline)
+# 	float                                              TimeBelowSupersonicSpeed;                      // 0x0880 (0x0004) [0x0000000000002000] (CPF_Transient)
+# 	uint8_t                                           UnknownData02[0x4];                            // 0x0884 (0x0004) MISSED OFFSET
+# 	class UNetworkConfig_TA*                           NetworkConfig;                                 // 0x0888 (0x0008) [0x0000800000000000]               
+# 	struct FScriptDelegate                             __EventPRIChanged__Delegate;                   // 0x0890 (0x0018) [0x0000000000400000] (CPF_NeedCtorLink)
 
 class Vehicle(Pawn):
     size = 0x08A8
@@ -421,10 +472,33 @@ class Vehicle(Pawn):
     def has_wheel_contact(self):
         vehicle_sim = self.get_vehicle_sim()
         wheels = vehicle_sim.get_wheels()
-        for wheel in wheels:
-            if wheel.get_contact_data().get_has_contact():
-                return True
+        # Check that all wheels have contact with the ground (wheel.get_contact_data().get_has_contact())
+        if all(wheel.get_contact_data().get_has_contact() for wheel in wheels):
+            return True
         return False
+    
+    def is_driving(self):
+        return self.sdk.pm.read_int(self.address + 0x07C8) & 1
+        
+    def is_jumped(self):
+        return (self.sdk.pm.read_int(self.address + 0x07C8) >> 2) & 1
+
+    def is_double_jumped(self):
+        return (self.sdk.pm.read_int(self.address + 0x07C8) >> 3) & 1
+    
+    def is_on_ground(self):
+        return (self.sdk.pm.read_int(self.address + 0x07C8) >> 4) & 1
+
+    def is_supersonic(self):
+        return (self.sdk.pm.read_int(self.address + 0x07C8) >> 5) & 1
+    
+    def is_podium_mode(self):
+        return (self.sdk.pm.read_int(self.address + 0x07C8) >> 6) & 1
+    
+    def has_post_match_celebration(self):
+        return (self.sdk.pm.read_int(self.address + 0x07C8) >> 7) & 1
+
+        
 
 
 
@@ -529,6 +603,18 @@ class Controller(Pointer):
     def get_player_num(self):
         return self.sdk.pm.read_int(self.address + 0x0290)
 
+class PlayerController(Controller):
+    size = 0x0D00
+ 
+    def get_pri(self):
+        pri_address = self.sdk.pm.read_ulonglong(self.address + 0x0988)
+        return PRI(pri_address, sdk=self.sdk)
+
+    def get_car(self):
+        car_address = self.sdk.pm.read_ulonglong(self.address + 0x0980)
+        return Car(car_address, sdk=self.sdk)
+    
+
 class VehicleInputs(Pointer):
     size = 0x0020
 
@@ -621,6 +707,10 @@ class VehiclePickup(Actor):
     def get_pickup_data(self):
         return FPickupData(self.address + 0x02A8, sdk=self.sdk)
 
+    def get_respawn_delay(self):
+        return self.sdk.pm.read_float(self.address + 0x0268)
+
+
 class VehiclePickupBoost(VehiclePickup):
     def get_boost_amount(self):
         return self.sdk.pm.read_float(self.address + 0x02F0)
@@ -686,7 +776,14 @@ class Goal(UObject):
         max_x, max_y, max_z = box.get_max().get_xyz()
         return max_y - min_y
  
-        
+
+
+class GameViewportClient(UObject):
+    size = 0x03C0
+
+    def get_game_event(self):
+        game_event_address = self.sdk.pm.read_ulonglong(self.address + 0x02E8)
+        return GameEvent(game_event_address, sdk=self.sdk)
 
     
 # Following classes are not pointing to any memory address, they are just data containers
@@ -697,6 +794,7 @@ class Field():
         # create 34  bppstpads
         self.boostpads = [BoostPad(x, y, z, is_big) for x, y, z, is_big in BoostPad.BOOST_LOCATIONS]
         self.sdk = sdk
+       
         pass
 
 
@@ -764,12 +862,19 @@ class BoostPad():
         self.is_active = True
         self.is_big = is_big
         self.location = Vector(x, y, z)
+        self.pickup = None
         self.picked_up_time = None
 
     def reset(self):
         self.is_active = True
         self.is_big = False
+        self.pickup = None
         self.picked_up_time = None
+
+    def get_elapsed_time(self):
+        if self.picked_up_time:
+            return  time.time() - self.picked_up_time
+        return None
 
 class Vector():
     def __init__(self, x=0, y=0, z=0):
@@ -793,11 +898,3 @@ class Vector():
 # };
 
 
-
-class KeyPressParams():
-    def __init__(bytes):
-        self.ControllerId = int.from_bytes(bytes[0:4], byteorder='little')
-        self.Key = FName(int.from_bytes(bytes[4:8], byteorder='little'))
-        self.EventType = int.from_bytes(bytes[8:9], byteorder='little')
-        self.bGamepad = int.from_bytes(bytes[13:17], byteorder='little') & 1
-        self.ReturnValue = int.from_bytes(bytes[17:21], byteorder='little') & 1

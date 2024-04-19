@@ -15,10 +15,13 @@ recv('process_event_address', function onMessage(payload) {
 
     Interceptor.attach(ptr(payload.address), {
         onEnter: function(args) {
+           
             // Le deuxième argument est le pointeur vers UFunction
             const uFunction = args[1];
 
             const address = uFunction.toString(16)
+
+           
 
             if  (scan_active) {
                 discovered_functions.set(address, address);
@@ -119,5 +122,11 @@ recv('hook_function', function onMessage(payload) {
 
     recv('hook_function', onMessage);
 });
+
+
+
+
 """
+
+
 

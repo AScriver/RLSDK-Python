@@ -6,10 +6,10 @@ import time
 import threading
 from typing import Callable, Any, Protocol
 from .event_handling import Event
-from .events import  EventFunctionHooked, EventTypes, EventPlayerTick, EventRoundActiveStateChanged, EventResetPickups, EventGameEventStarted, EventKeyPressed
-from .game_objects import UClass, UFunction, GameEvent, TArray, UObject, FNameEntry, FName, Field, VehiclePickupBoost
+from .events import EventFunctionHooked, EventBoostPadChanged, EventTypes, EventPlayerTick, EventRoundActiveStateChanged, EventResetPickups, EventGameEventStarted, EventKeyPressed, EventGameEventDestroyed
+from .game_objects import UClass, UFunction, GameEvent, TArray, UObject, FNameEntry, FName, Field, VehiclePickupBoost, GameViewportClient
 from .frida_script import frida_script
-import struct
+
 
 PROCESS_NAME = "RocketLeague.exe"
 
@@ -26,6 +26,9 @@ FUNCTION_ROUND_ACTIVE_BEGIN = "Function TAGame.GameEvent_Soccar_TA.Active.BeginS
 FUNCTION_ROUND_ACTIVE_END = "Function TAGame.GameEvent_Soccar_TA.Active.EndState"
 FUNCTION_RESET_PICKUPS = "Function TAGame.GameEvent_TA.ResetPickups"
 FUNCTION_GAMEEVENT_BEGIN_PLAY = "Function TAGame.GameEvent_Soccar_TA.PostBeginPlay"
+FUNCTION_GAME_EVENT_ACTIVE_TICK = "Function TAGame.GameEvent_Soccar_TA.Active.Tick"
+FUNCTION_GAME_VIEWPORT_CLIENT_TICK = "Function Engine.GameViewportClient.Tick"
+FUNCTION_GAME_EVENT_DESTROYED = "Function TAGame.GameEvent_Soccar_TA.Destroyed"
 
 CLASS_CORE_OBJECT = "Class Core.Object"
 
@@ -51,13 +54,12 @@ class RLSDK:
             self.pm = pymem.Pymem(PROCESS_NAME)
             self.frida = frida.attach(PROCESS_NAME)
         except:
-            print("Error opening RocketLeague.exe")
-            return
+            raise Exception("Process not found")
 
         self.event = Event()
         
-        self.g_names_offset = 0x2429230
-        self.g_object_offset = 0x2429278
+        self.g_names_offset = 0x242B630
+        self.g_object_offset = 0x242B678
 
         self.address_indexed_gnames = {}
         self.name_indexed_gnames = {}
@@ -73,6 +75,7 @@ class RLSDK:
         self.map_objects()
 
         self.process_event_address = self.get_process_event_address()
+        self.current_game_event = None
 
         if self.process_event_address == None:
             print("Process event address not found")
@@ -95,7 +98,10 @@ class RLSDK:
         self.hook_function(FUNCTION_ROUND_ACTIVE_END)
         self.hook_function(FUNCTION_RESET_PICKUPS)
         self.hook_function(FUNCTION_GAMEEVENT_BEGIN_PLAY)
+        # self.hook_function(FUNCTION_GAME_EVENT_ACTIVE_TICK)
         self.hook_function(FUNCTION_KEY_PRESS, args_map=[(2, "bytes", "key_params", 0x1c)])
+        self.hook_function(FUNCTION_GAME_VIEWPORT_CLIENT_TICK)
+        self.hook_function(FUNCTION_GAME_EVENT_DESTROYED)
 
         # player tick is conditional because it's called every frame, we don't want hook it if developer doesn't need it
 
@@ -135,23 +141,32 @@ class RLSDK:
         function_name = event.function.get_full_name()
 
         if function_name == FUNCTION_BOOST_PICKED_UP:
-
+           
             pickup = VehiclePickupBoost(int(event.args['caller'], 16), sdk=self)
     
-     
             boostpad = self.field.find_boostpad_from_pickup(pickup)
       
             if boostpad:
                 boostpad.is_active = False
+                boostpad.pickup = pickup
+                boostpad.picked_up_time = time.time()
+                self.event.fire(EventTypes.ON_BOOSTPAD_CHANGED, EventBoostPadChanged(boostpad))
 
         elif function_name == FUNCTION_BOOST_RESPAWN:
          
             pickup = VehiclePickupBoost(int(event.args['caller'], 16), sdk=self)
             boostpad = self.field.find_boostpad_from_pickup(pickup)
+            
+
             if boostpad:
                 boostpad.is_active = True
+                boostpad.pickup = pickup
+                boostpad.picked_up_time = None
+                self.event.fire(EventTypes.ON_BOOSTPAD_CHANGED, EventBoostPadChanged(boostpad))
+                
         
         elif function_name == FUNCTION_PLAYER_TICK:
+            
             self.event.fire(EventTypes.ON_PLAYER_TICK, EventPlayerTick(event.args['deltatime']))
 
         elif function_name == FUNCTION_ROUND_ACTIVE_BEGIN:
@@ -168,13 +183,25 @@ class RLSDK:
             self.event.fire(EventTypes.ON_GAME_EVENT_STARTED, EventGameEventStarted())
         elif function_name == FUNCTION_KEY_PRESS:
             params = event.args['key_params']
-
+          
             data_bytes = bytes.fromhex(params)
             fname_entry_id = int.from_bytes(data_bytes[4:8], byteorder='little')
             key_name = self.get_gname_by_index(fname_entry_id).get_name()
             ev = EventKeyPressed(data_bytes, key_name)
 
             self.event.fire(EventTypes.ON_KEY_PRESSED, ev)
+        # elif function_name == FUNCTION_GAME_EVENT_ACTIVE_TICK:
+
+        #     viewport = GameViewportClient(int(event.args['caller'], 16), sdk=self)
+        #     self.current_game_event = viewport.get_game_event()
+        #     print(self.current_game_event.is_round_active())
+        elif function_name == FUNCTION_GAME_VIEWPORT_CLIENT_TICK:
+            viewport = GameViewportClient(int(event.args['caller'], 16), sdk=self)
+            self.current_game_event = viewport.get_game_event()
+
+        elif function_name == FUNCTION_GAME_EVENT_DESTROYED:
+            self.current_game_event = None
+            self.event.fire(EventTypes.ON_GAME_EVENT_DESTROYED, EventGameEventDestroyed())
 
    
 
@@ -249,12 +276,7 @@ class RLSDK:
 
         
     def get_game_event(self):
-        offsets = [0x023157A0, 0x200, 0x458, 0x278, 0x20, 0x118, 0x78]
-        try:
-            game_event_address = self.get_offsets_final_address(offsets)
-        except:
-            return None
-        return GameEvent(game_event_address, sdk=self)
+        return self.current_game_event
     
     def get_field(self):
         return self.field

@@ -1,12 +1,12 @@
-from .game_objects import Car, UFunction, FName
+from .game_objects import Car, UFunction, FName, BoostPad
 from typing import Any
 from .event_handling import EventData
 
 
 
 class EventBoostPadChanged(EventData):
-    def __init__(self, car: Car):
-        self.car = Car
+    def __init__(self, boostpad: BoostPad):
+        self.boostpad = boostpad
 
 class EventFunctionHooked(EventData):
     def __init__(self, function: UFunction, args: list[Any]):
@@ -27,6 +27,10 @@ class EventResetPickups(EventData):
         pass
 
 class EventGameEventStarted(EventData):
+    def __init__(self):
+        pass
+
+class EventGameEventDestroyed(EventData):
     def __init__(self):
         pass
 
@@ -56,5 +60,6 @@ class EventTypes:
     ON_RESET_PICKUPS = "on_reset_pickups"
     ON_GAME_EVENT_STARTED = "on_game_event_started"
     ON_KEY_PRESSED = "on_key_pressed"
-    
+    ON_BOOSTPAD_CHANGED = "on_boostpad_changed"
+    ON_GAME_EVENT_DESTROYED = "on_game_event_destroyed"
 
