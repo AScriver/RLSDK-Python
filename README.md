@@ -44,3 +44,9 @@ sys.stdin.read()
 ```
 
 More examples and documentation will be added if users ask for it.
+
+## Project using RLSDK Python
+
+- [RLMarlbot](https://github.com/MarlBurroW/RLMarlbot) - Nexto bot based on my python SDK
+
+
