@@ -69,6 +69,7 @@ More examples and documentation will be added if users ask for it.
 
 - [RLMarlbot](https://github.com/MarlBurroW/RLMarlbot) - Nexto bot based on my python SDK
 
-
+## Help needed
+I need a way to find GObjects and GNames base offsets, because this offsets changes frequently (on each uptates) and are differents for Epic and Steam
 
 
