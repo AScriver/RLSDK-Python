@@ -46,6 +46,20 @@ sys.stdin.read()
 
 ```
 
+## Events
+
+You can attach a callback function to an event like this:
+
+```python
+from rlsdk_python import RLSDK, EventTypes
+sdk = RLSDK(hook_player_tick=True)
+sdk.event.subscribe(EventTypes.ON_KEY_PRESSED, on_key_pressed)
+
+def on_key_pressed(event):
+    print("Key pressed:", event.key)
+
+```
+
 More examples and documentation will be added if users ask for it.
 
 
