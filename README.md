@@ -2,6 +2,9 @@
 
 This is reverse engineered python SDK package aiming to read data from RocketLeague.exe.
 
+## How does it works 
+This SDK uses [PyMem](https://pypi.org/project/Pymem/) to read game memory and [frida](https://frida.re/docs/home/) to hook game functions. 
+
 ## Installation
 
 ```bash
@@ -45,8 +48,13 @@ sys.stdin.read()
 
 More examples and documentation will be added if users ask for it.
 
+
+
+
 ## Project using RLSDK Python
 
 - [RLMarlbot](https://github.com/MarlBurroW/RLMarlbot) - Nexto bot based on my python SDK
+
+
 
 
