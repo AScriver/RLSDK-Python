@@ -789,32 +789,6 @@ class GameViewportClient(UObject):
 # Following classes are not pointing to any memory address, they are just data containers
     
 
-class Field():
-    def __init__(self, sdk) -> None:
-        # create 34  bppstpads
-        self.boostpads = [BoostPad(x, y, z, is_big) for x, y, z, is_big in BoostPad.BOOST_LOCATIONS]
-        self.sdk = sdk
-       
-        pass
-
-
-    def reset_boostpads(self):
-        for pad in self.boostpads:
-            pad.reset()
-
-
-    def find_boostpad_by_location(self, x, y, z, tolerance=100.0):
-        target_location = Vector(x, y, z)
-        for pad in self.boostpads:
-            if pad.location.distance_to(target_location) <= tolerance:
-                return pad
-        return None
-    
-    def find_boostpad_from_pickup(self, pickup: VehiclePickupBoost):
-        x, y, z = pickup.get_location().get_xyz()
-        return self.find_boostpad_by_location(x, y, z)
-    
-
 
 
 
@@ -867,13 +841,22 @@ class BoostPad():
 
     def reset(self):
         self.is_active = True
-        self.is_big = False
         self.pickup = None
         self.picked_up_time = None
 
     def get_elapsed_time(self):
         if self.picked_up_time:
             return  time.time() - self.picked_up_time
+        return None
+    
+    def respawn_time(self):
+        if self.is_big:
+            return 10
+        return 4
+    
+    def get_remaining_time(self):
+        if self.picked_up_time:
+            return self.respawn_time() - self.get_elapsed_time()
         return None
 
 class Vector():
@@ -885,7 +868,38 @@ class Vector():
     def distance_to(self, other):
         return ((self.x - other.x) ** 2 + (self.y - other.y) ** 2 + (self.z - other.z) ** 2) ** 0.5
 
+class Field():
+    def __init__(self, sdk) -> None:
+        # create 34  bppstpads
+        self.boostpads = [BoostPad(x, y, z, is_big) for x, y, z, is_big in BoostPad.BOOST_LOCATIONS]
+        self.sdk = sdk
+       
+        pass
 
+
+    def reset_boostpads(self):
+        for pad in self.boostpads:
+            pad.reset()
+
+
+    def find_boostpad_by_location(self, x, y, z, tolerance=100.0):
+        target_location = Vector(x, y, z)
+        for pad in self.boostpads:
+            if pad.location.distance_to(target_location) <= tolerance:
+                return pad
+        return None
+    
+    def find_boostpad_from_pickup(self, pickup: VehiclePickupBoost):
+        x, y, z = pickup.get_location().get_xyz()
+        return self.find_boostpad_by_location(x, y, z)
+    
+    def update_boostpad_from_pickup(self, pad: BoostPad, pickup: VehiclePickupBoost):
+        x,y,z = pickup.get_location().get_xyz()
+        pad.location.x = x
+        pad.location.y = y
+        pad.location.z = z
+        
+        
 
 # struct UGameViewportClient_TA_execHandleKeyPress_Params
 # {

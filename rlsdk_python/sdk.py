@@ -150,6 +150,12 @@ class RLSDK:
                 boostpad.is_active = False
                 boostpad.pickup = pickup
                 boostpad.picked_up_time = time.time()
+                
+                
+                # update boostpad position to make sure it's accurate (because the pickup is not always at the same position according the map)
+                
+                self.field.update_boostpad_from_pickup(boostpad, pickup)
+              
                 self.event.fire(EventTypes.ON_BOOSTPAD_CHANGED, EventBoostPadChanged(boostpad))
 
         elif function_name == FUNCTION_BOOST_RESPAWN:
@@ -162,6 +168,9 @@ class RLSDK:
                 boostpad.is_active = True
                 boostpad.pickup = pickup
                 boostpad.picked_up_time = None
+                
+                self.field.update_boostpad_from_pickup(boostpad, pickup)
+
                 self.event.fire(EventTypes.ON_BOOSTPAD_CHANGED, EventBoostPadChanged(boostpad))
                 
         
