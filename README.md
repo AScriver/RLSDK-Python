@@ -2,6 +2,9 @@
 
 This is reverse engineered python SDK package aiming to read data from RocketLeague.exe.
 
+## How does it works 
+This SDK uses [PyMem](https://pypi.org/project/Pymem/) to read game memory and [frida](https://frida.re/docs/home/) to hook game functions. 
+
 ## Installation
 
 ```bash
@@ -43,10 +46,30 @@ sys.stdin.read()
 
 ```
 
+## Events
+
+You can attach a callback function to an event like this:
+
+```python
+from rlsdk_python import RLSDK, EventTypes
+sdk = RLSDK()
+sdk.event.subscribe(EventTypes.ON_KEY_PRESSED, on_key_pressed)
+
+def on_key_pressed(event):
+    print("Key pressed:", event.key)
+
+```
+
 More examples and documentation will be added if users ask for it.
+
+
+
 
 ## Project using RLSDK Python
 
 - [RLMarlbot](https://github.com/MarlBurroW/RLMarlbot) - Nexto bot based on my python SDK
+
+## Help needed
+I need a way to find GObjects and GNames base offsets, because this offsets changes frequently (on each uptates) and are differents for Epic and Steam
 
 
