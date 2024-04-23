@@ -1,5 +1,5 @@
 import pymem
-
+import pymem.pattern
 import ctypes
 import frida
 import time
@@ -49,18 +49,34 @@ ON_FUNCTION_HOOKED="on_function_hooked"
 class RLSDK:
 
     def __init__(self, hook_player_tick=False):
-
+      
         try:
             self.pm = pymem.Pymem(PROCESS_NAME)
             self.frida = frida.attach(PROCESS_NAME)
         except:
             raise Exception("Process not found")
+        
+        
+        print("Finding GNames offset...")
+        try:
+            self.g_names_offset = self.resolve_gnames_offset()
+        except:
+            raise Exception("GNames offset not found")
+
+
+        print("GNames offset: " + hex(self.g_names_offset))
+        
+        print("Finding GObjects offset...")
+        
+        try:
+            self.g_object_offset = self.resolve_gobjects_offset()
+        except:
+            raise Exception("GObjects offset not found")
+        
+        print("GObjects offset: " + hex(self.g_object_offset))
 
         self.event = Event()
-        
-        self.g_names_offset = 0x242B630
-        self.g_object_offset = 0x242B678
-
+ 
         self.address_indexed_gnames = {}
         self.name_indexed_gnames = {}
         self.index_indexed_gnames = {}
@@ -115,8 +131,53 @@ class RLSDK:
 
         self.field = Field(self)
       
- 
+    
+    
+    def resolve_gobjects_offset(self):
+        # Pattern recherché
+        pattern = rb'\xE8....\x8B\x5D\xAF'
+        
+        # Trouver l'adresse de base du pattern
+        base_address = self.pm.pattern_scan_all(pattern, return_multiple=False)
+        if base_address is None:
+            return None
 
+        # Calcul des différents offsets pour atteindre l'adresse finale
+        # Lire l'offset relatif à partir de l'adresse de base + 1 et ajouter à base_address
+        relative_offset = self.pm.read_int(base_address + 1)
+        intermediate_address = base_address + 1 + relative_offset + 4  # +4 pour la taille de l'int lu
+
+        # Lire l'offset relatif à partir du nouvel emplacement + 0x65 et ajouter à l'adresse intermédiaire
+        final_relative_offset = self.pm.read_int(intermediate_address + 0x65 + 3)
+        final_address = intermediate_address + 0x65 + 3 + final_relative_offset + 4  # +4 pour la taille de l'int lu
+        
+        if not final_address:
+            raise Exception("GObjects offset not found")
+
+        return final_address - self.pm.base_address
+
+    def resolve_gnames_offset(self):
+        # Pattern recherché
+        pattern = rb'\x75.\xE8....\x48\xC7\xC7'
+        
+        # Trouver l'adresse de base du pattern
+        base_address = self.pm.pattern_scan_all(pattern, return_multiple=False)
+        if base_address is None:
+            return None
+
+        # Calcul des différents offsets pour atteindre l'adresse finale
+        # Lire l'offset relatif à partir de l'adresse de base + 3 et ajouter à base_address
+        relative_offset = self.pm.read_int(base_address + 3)
+        intermediate_address = base_address + 3 + relative_offset + 4  # +4 pour la taille de l'int lu
+
+        # Lire l'offset relatif à partir du nouvel emplacement + 0x2F et ajouter à l'adresse intermédiaire
+        final_relative_offset = self.pm.read_int(intermediate_address + 0x2F + 3)
+        final_address = intermediate_address + 0x2F + 3 + final_relative_offset + 4  # +4 pour la taille de l'int lu
+        
+        if not final_address:
+            raise Exception("GNames offset not found")
+
+        return final_address - self.pm.base_address
 
     def scan_functions(self, duration=10):
         print("Scanning functions...")

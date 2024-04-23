@@ -333,6 +333,46 @@ class FString(Pointer):
 
         return result
     
+    
+    
+    
+# // Class Engine.PlayerReplicationInfo
+# // 0x01A8 (0x0268 - 0x0410)
+# class APlayerReplicationInfo : public AReplicationInfo
+# {
+# public:
+# 	class UObjectProvider*                             ObjectProvider;                                // 0x0268 (0x0008) [0x0000000004080008] (CPF_ExportObject | CPF_Component | CPF_EditInline)
+# 	class UGroupComponent_ORS*                         RegistryGroup;                                 // 0x0270 (0x0008) [0x0000000004080008] (CPF_ExportObject | CPF_Component | CPF_EditInline)
+# 	int32_t                                            Score;                                         // 0x0278 (0x0004) [0x0000000100000020] (CPF_Net)     
+# 	int32_t                                            Deaths;                                        // 0x027C (0x0004) [0x0000000000000020] (CPF_Net)     
+# 	uint8_t                                            Ping;                                          // 0x0280 (0x0001) [0x0000000000000020] (CPF_Net)     
+# 	ETTSSpeaker                                        TTSSpeaker;                                    // 0x0281 (0x0001) [0x0000000000002000] (CPF_Transient)
+# 	uint8_t                                           UnknownData00[0x2];                            // 0x0282 (0x0002) MISSED OFFSET
+# 	int32_t                                            NumLives;                                      // 0x0284 (0x0004) [0x0000000000000000]               
+# 	class FString                                      PlayerName;                                    // 0x0288 (0x0010) [0x0000000100400020] (CPF_Net | CPF_NeedCtorLink)
+# 	class FString                                      OldName;                                       // 0x0298 (0x0010) [0x0000000000400000] (CPF_NeedCtorLink)
+# 	int32_t                                            PlayerID;                                      // 0x02A8 (0x0004) [0x0000000000000020] (CPF_Net)     
+# 	uint8_t                                           UnknownData01[0x4];                            // 0x02AC (0x0004) MISSED OFFSET
+# 	class ATeamInfo*                                   Team;                                          // 0x02B0 (0x0008) [0x0000000104000020] (CPF_Net | CPF_EditInline)
+# 	uint32_t                                           bAdmin : 1;                                    // 0x02B8 (0x0004) [0x0000000000000020] [0x00000001] (CPF_Net)
+# 	uint32_t                                           bIsSpectator : 1;                              // 0x02B8 (0x0004) [0x0000000100000020] [0x00000002] (CPF_Net)
+# 	uint32_t                                           bOnlySpectator : 1;                            // 0x02B8 (0x0004) [0x0000000000000020] [0x00000004] (CPF_Net)
+# 	uint32_t                                           bWaitingPlayer : 1;                            // 0x02B8 (0x0004) [0x0000000000000020] [0x00000008] (CPF_Net)
+# 	uint32_t                                           bReadyToPlay : 1;                              // 0x02B8 (0x0004) [0x0000000000000020] [0x00000010] (CPF_Net)
+# 	uint32_t                                           bOutOfLives : 1;                               // 0x02B8 (0x0004) [0x0000000000000020] [0x00000020] (CPF_Net)
+# 	uint32_t                                           bBot : 1;                                      // 0x02B8 (0x0004) [0x0000000000000020] [0x00000040] (CPF_Net)
+# 	uint32_t                                           bIsInactive : 1;                               // 0x02B8 (0x0004) [0x0000000100000020] [0x00000080] (CPF_Net)
+# 	uint32_t                                           bFromPreviousLevel : 1;                        // 0x02B8 (0x0004) [0x0000000000000020] [0x00000100] (CPF_Net)
+# 	uint32_t                                           bTimedOut : 1;                                 // 0x02B8 (0x0004) [0x0000000000000020] [0x00000200] (CPF_Net)
+# 	uint32_t                                           bUnregistered : 1;                             // 0x02B8 (0x0004) [0x0000000000002000] [0x00000400] (CPF_Transient)
+# 	int32_t                                            StartTime;                                     // 0x02BC (0x0004) [0x0000000000000000]               
+# 	class FString                                      StringSpectating;                              // 0x02C0 (0x0010) [0x0000000000408002] (CPF_Const | CPF_Localized | CPF_NeedCtorLink)
+# 	class FString                                      StringUnknown;                                 // 0x02D0 (0x0010) [0x0000000000408002] (CPF_Const | CPF_Localized | CPF_NeedCtorLink)
+# 	int32_t                                            Kills;                                         // 0x02E0 (0x0004) [0x0000000000000000]               
+# 	float                                              ExactPing;                                     // 0x02E4 (0x0004) [0x0000000000000000]               
+# 	class FString                                      SavedNetworkAddress;                           // 0x02E8 (0x0010) [0x0000000000400000] (CPF_NeedCtorLink)
+
+
 class PlayerReplicationInfo(Pointer):
     size = 0x0410
 
@@ -356,6 +396,39 @@ class PlayerReplicationInfo(Pointer):
     
     def get_player_id(self):
         return self.sdk.pm.read_int(self.address + 0x02A8)
+    
+    def is_admin(self):
+        return (self.sdk.pm.read_int(self.address + 0x02B8) >> 0) & 1
+    
+    def is_specator(self):
+        return (self.sdk.pm.read_int(self.address + 0x02B8) >> 1) & 1
+    
+    def is_only_spectator(self):
+        return (self.sdk.pm.read_int(self.address + 0x02B8) >> 2) & 1
+    
+    def is_waiting_player(self):
+        return (self.sdk.pm.read_int(self.address + 0x02B8) >> 3) & 1
+    
+    def is_ready_to_play(self):
+        return (self.sdk.pm.read_int(self.address + 0x02B8) >> 4) & 1
+    
+    def is_out_of_lives(self):
+        return (self.sdk.pm.read_int(self.address + 0x02B8) >> 5) & 1
+    
+    def is_bot(self):
+        return (self.sdk.pm.read_int(self.address + 0x02B8) >> 6) & 1
+    
+    def is_inactive(self):
+        return (self.sdk.pm.read_int(self.address + 0x02B8) >> 7) & 1
+    
+    def is_from_previous_level(self):
+        return (self.sdk.pm.read_int(self.address + 0x02B8) >> 8) & 1
+    
+    def is_timed_out(self):
+        return (self.sdk.pm.read_int(self.address + 0x02B8) >> 9) & 1
+    
+    def is_unregistered(self):
+        return (self.sdk.pm.read_int(self.address + 0x02B8) >> 10) & 1
 
 class PRI(PlayerReplicationInfo):
     size = 0x0BD0
