@@ -400,7 +400,7 @@ class PlayerReplicationInfo(Pointer):
     def is_admin(self):
         return (self.sdk.pm.read_int(self.address + 0x02B8) >> 0) & 1
     
-    def is_specator(self):
+    def is_spectator(self):
         return (self.sdk.pm.read_int(self.address + 0x02B8) >> 1) & 1
     
     def is_only_spectator(self):
