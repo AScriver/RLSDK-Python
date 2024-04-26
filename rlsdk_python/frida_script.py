@@ -1,16 +1,21 @@
 frida_script = """
-console.log("Frida script started");
+
+
+function log(message) {
+    send({type: "log", message: message});
+}
+
+log("Frida script started");
 
 const hooked_functions = new Map();
 const hooked_functions_args_map = new Map();
 const discovered_functions = new Map();
 let scan_active = false;
 
-
 // Receive message
 
 recv('process_event_address', function onMessage(payload) {
-    console.log("Received ProcessEvent Address: 0x" + payload.address.toString(16));
+    log("Received ProcessEvent Address: 0x" + payload.address.toString(16));
 
 
     Interceptor.attach(ptr(payload.address), {
@@ -69,7 +74,7 @@ recv('process_event_address', function onMessage(payload) {
                             }
                             casted_args[name] = hexString;
                         } else {
-                            console.error('Buffer is null');
+                            error('Buffer is null');
                         }
                     } else {
                         casted_args[name] = args[index];
@@ -95,7 +100,7 @@ recv('process_event_address', function onMessage(payload) {
 recv('scan_functions', function onMessage(payload) {
     const duration = payload.duration;
     
-    console.log("Start scanning functions for " + duration + " seconds");
+    log("Start scanning functions for " + duration + " seconds");
 
     scan_active = true;
     // empty discovered functions
@@ -118,13 +123,10 @@ recv('hook_function', function onMessage(payload) {
     hooked_functions.set(payload.address.toString(16), payload.name);
     hooked_functions_args_map.set(payload.address.toString(16), payload.args_map);
 
-    console.log("Received Hook Function: 0x" + payload.address.toString(16) + " " + payload.name);
+    log("Start hook function: 0x" + payload.address.toString(16) + " " + payload.name);
 
     recv('hook_function', onMessage);
 });
-
-
-
 
 """
 

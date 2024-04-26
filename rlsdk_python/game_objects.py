@@ -16,7 +16,8 @@ class UObject(Pointer):
     size = 0x0060
 
     def get_name(self):
-        return self.sdk.get_fname_string(self.address + 0x0048)
+        index = self.sdk.pm.read_int(self.address + 0x0048)
+        return self.sdk.get_name(index)
     
     def get_index(self):
         return self.sdk.pm.read_int(self.address +0x0038)
@@ -333,45 +334,6 @@ class FString(Pointer):
 
         return result
     
-    
-    
-    
-# // Class Engine.PlayerReplicationInfo
-# // 0x01A8 (0x0268 - 0x0410)
-# class APlayerReplicationInfo : public AReplicationInfo
-# {
-# public:
-# 	class UObjectProvider*                             ObjectProvider;                                // 0x0268 (0x0008) [0x0000000004080008] (CPF_ExportObject | CPF_Component | CPF_EditInline)
-# 	class UGroupComponent_ORS*                         RegistryGroup;                                 // 0x0270 (0x0008) [0x0000000004080008] (CPF_ExportObject | CPF_Component | CPF_EditInline)
-# 	int32_t                                            Score;                                         // 0x0278 (0x0004) [0x0000000100000020] (CPF_Net)     
-# 	int32_t                                            Deaths;                                        // 0x027C (0x0004) [0x0000000000000020] (CPF_Net)     
-# 	uint8_t                                            Ping;                                          // 0x0280 (0x0001) [0x0000000000000020] (CPF_Net)     
-# 	ETTSSpeaker                                        TTSSpeaker;                                    // 0x0281 (0x0001) [0x0000000000002000] (CPF_Transient)
-# 	uint8_t                                           UnknownData00[0x2];                            // 0x0282 (0x0002) MISSED OFFSET
-# 	int32_t                                            NumLives;                                      // 0x0284 (0x0004) [0x0000000000000000]               
-# 	class FString                                      PlayerName;                                    // 0x0288 (0x0010) [0x0000000100400020] (CPF_Net | CPF_NeedCtorLink)
-# 	class FString                                      OldName;                                       // 0x0298 (0x0010) [0x0000000000400000] (CPF_NeedCtorLink)
-# 	int32_t                                            PlayerID;                                      // 0x02A8 (0x0004) [0x0000000000000020] (CPF_Net)     
-# 	uint8_t                                           UnknownData01[0x4];                            // 0x02AC (0x0004) MISSED OFFSET
-# 	class ATeamInfo*                                   Team;                                          // 0x02B0 (0x0008) [0x0000000104000020] (CPF_Net | CPF_EditInline)
-# 	uint32_t                                           bAdmin : 1;                                    // 0x02B8 (0x0004) [0x0000000000000020] [0x00000001] (CPF_Net)
-# 	uint32_t                                           bIsSpectator : 1;                              // 0x02B8 (0x0004) [0x0000000100000020] [0x00000002] (CPF_Net)
-# 	uint32_t                                           bOnlySpectator : 1;                            // 0x02B8 (0x0004) [0x0000000000000020] [0x00000004] (CPF_Net)
-# 	uint32_t                                           bWaitingPlayer : 1;                            // 0x02B8 (0x0004) [0x0000000000000020] [0x00000008] (CPF_Net)
-# 	uint32_t                                           bReadyToPlay : 1;                              // 0x02B8 (0x0004) [0x0000000000000020] [0x00000010] (CPF_Net)
-# 	uint32_t                                           bOutOfLives : 1;                               // 0x02B8 (0x0004) [0x0000000000000020] [0x00000020] (CPF_Net)
-# 	uint32_t                                           bBot : 1;                                      // 0x02B8 (0x0004) [0x0000000000000020] [0x00000040] (CPF_Net)
-# 	uint32_t                                           bIsInactive : 1;                               // 0x02B8 (0x0004) [0x0000000100000020] [0x00000080] (CPF_Net)
-# 	uint32_t                                           bFromPreviousLevel : 1;                        // 0x02B8 (0x0004) [0x0000000000000020] [0x00000100] (CPF_Net)
-# 	uint32_t                                           bTimedOut : 1;                                 // 0x02B8 (0x0004) [0x0000000000000020] [0x00000200] (CPF_Net)
-# 	uint32_t                                           bUnregistered : 1;                             // 0x02B8 (0x0004) [0x0000000000002000] [0x00000400] (CPF_Transient)
-# 	int32_t                                            StartTime;                                     // 0x02BC (0x0004) [0x0000000000000000]               
-# 	class FString                                      StringSpectating;                              // 0x02C0 (0x0010) [0x0000000000408002] (CPF_Const | CPF_Localized | CPF_NeedCtorLink)
-# 	class FString                                      StringUnknown;                                 // 0x02D0 (0x0010) [0x0000000000408002] (CPF_Const | CPF_Localized | CPF_NeedCtorLink)
-# 	int32_t                                            Kills;                                         // 0x02E0 (0x0004) [0x0000000000000000]               
-# 	float                                              ExactPing;                                     // 0x02E4 (0x0004) [0x0000000000000000]               
-# 	class FString                                      SavedNetworkAddress;                           // 0x02E8 (0x0010) [0x0000000000400000] (CPF_NeedCtorLink)
-
 
 class PlayerReplicationInfo(Pointer):
     size = 0x0410
@@ -398,7 +360,7 @@ class PlayerReplicationInfo(Pointer):
         return self.sdk.pm.read_int(self.address + 0x02A8)
     
     def is_admin(self):
-        return (self.sdk.pm.read_int(self.address + 0x02B8) >> 0) & 1
+        return self.sdk.pm.read_int(self.address + 0x02B8) & 1
     
     def is_spectator(self):
         return (self.sdk.pm.read_int(self.address + 0x02B8) >> 1) & 1
@@ -478,50 +440,6 @@ class BoostComponent(Pointer):
     
     def get_start_amount(self):
         return self.sdk.pm.read_float(self.address + 0x0308)
-# Class TAGame.Vehicle_TA
-# // 0x0100 (0x07A8 - 0x08A8)
-# class AVehicle_TA : public ARBActor_TA
-# {
-# public:
-# 	class UCarMeshComponent_TA*                        CarMesh;                                       // 0x07A8 (0x0008) [0x000000000408000B] (CPF_Edit | CPF_Const | CPF_ExportObject | CPF_Component | CPF_EditInline)
-# 	class UVehicleSim_TA*                              VehicleSim;                                    // 0x07B0 (0x0008) [0x0000000004080009] (CPF_Edit | CPF_ExportObject | CPF_Component | CPF_EditInline)
-# 	struct FStickyForceData                            StickyForce;                                   // 0x07B8 (0x0008) [0x0000000000000001] (CPF_Edit)    
-# 	struct FAutoFlipData                               AutoFlip;                                      // 0x07C0 (0x0008) [0x0000000000000001] (CPF_Edit)    
-# 	uint32_t                                           bDriving : 1;                                  // 0x07C8 (0x0004) [0x0000004000002020] [0x00000001] (CPF_Net | CPF_Transient)
-# 	uint32_t                                           bReplicatedHandbrake : 1;                      // 0x07C8 (0x0004) [0x0000000000002022] [0x00000002] (CPF_Const | CPF_Net | CPF_Transient)
-# 	uint32_t                                           bJumped : 1;                                   // 0x07C8 (0x0004) [0x0000008000002000] [0x00000004] (CPF_Transient)
-# 	uint32_t                                           bDoubleJumped : 1;                             // 0x07C8 (0x0004) [0x0000008000002000] [0x00000008] (CPF_Transient)
-# 	uint32_t                                           bOnGround : 1;                                 // 0x07C8 (0x0004) [0x0000004000002000] [0x00000010] (CPF_Transient)
-# 	uint32_t                                           bSuperSonic : 1;                               // 0x07C8 (0x0004) [0x0000004000002000] [0x00000020] (CPF_Transient)
-# 	uint32_t                                           bPodiumMode : 1;                               // 0x07C8 (0x0004) [0x0000000100002020] [0x00000040] (CPF_Net | CPF_Transient)
-# 	uint32_t                                           bHasPostMatchCelebration : 1;                  // 0x07C8 (0x0004) [0x0000008000002020] [0x00000080] (CPF_Net | CPF_Transient)
-# 	struct FVehicleInputs                              Input;                                         // 0x07CC (0x0020) [0x0000000000002002] (CPF_Const | CPF_Transient)
-# 	uint8_t                                            ReplicatedThrottle;                            // 0x07EC (0x0001) [0x0000000000002022] (CPF_Const | CPF_Net | CPF_Transient)
-# 	uint8_t                                            ReplicatedSteer;                               // 0x07ED (0x0001) [0x0000000000002022] (CPF_Const | CPF_Net | CPF_Transient)
-# 	uint8_t                                           UnknownData00[0x2];                            // 0x07EE (0x0002) MISSED OFFSET
-# 	class AAIController_TA*                            AIController;                                  // 0x07F0 (0x0008) [0x0000004000002000] (CPF_Transient)
-# 	class APlayerController_TA*                        PlayerController;                              // 0x07F8 (0x0008) [0x0000004000002000] (CPF_Transient)
-# 	class APRI_TA*                                     PRI;                                           // 0x0800 (0x0008) [0x0000004000002000] (CPF_Transient)
-# 	int32_t                                            VehicleUpdateTag;                              // 0x0808 (0x0004) [0x0000000800002002] (CPF_Const | CPF_Transient)
-# 	uint8_t                                           UnknownData01[0x4];                            // 0x080C (0x0004) MISSED OFFSET
-# 	struct FCarInteractionData                         CarInteraction;                                // 0x0810 (0x0010) [0x0000000000000000]               
-# 	struct FVector                                     LocalCollisionOffset;                          // 0x0820 (0x000C) [0x0000000000002002] (CPF_Const | CPF_Transient)
-# 	struct FVector                                     LocalCollisionExtent;                          // 0x082C (0x000C) [0x0000000000002002] (CPF_Const | CPF_Transient)
-# 	int32_t                                            LastBallTouchFrame;                            // 0x0838 (0x0004) [0x0000000000002000] (CPF_Transient)
-# 	int32_t                                            LastBallImpactFrame;                           // 0x083C (0x0004) [0x0000000000002000] (CPF_Transient)
-# 	class ACarComponent_Boost_TA*                      BoostComponent;                                // 0x0840 (0x0008) [0x0000000000002000] (CPF_Transient)
-# 	class ACarComponent_Dodge_TA*                      DodgeComponent;                                // 0x0848 (0x0008) [0x0000000000002000] (CPF_Transient)
-# 	class ACarComponent_AirControl_TA*                 AirControlComponent;                           // 0x0850 (0x0008) [0x0000000000002000] (CPF_Transient)
-# 	class ACarComponent_Jump_TA*                       JumpComponent;                                 // 0x0858 (0x0008) [0x0000000000002000] (CPF_Transient)
-# 	class ACarComponent_DoubleJump_TA*                 DoubleJumpComponent;                           // 0x0860 (0x0008) [0x0000000000002000] (CPF_Transient)
-# 	int32_t                                            PodiumSpot;                                    // 0x0868 (0x0004) [0x0000008000002020] (CPF_Net | CPF_Transient)
-# 	int32_t                                            PMCAnimIdx;                                    // 0x086C (0x0004) [0x0000008000002020] (CPF_Net | CPF_Transient)
-# 	class UPitchTekDrawingComponent_TA*                PitchTekComponent;                             // 0x0870 (0x0008) [0x000000000408000A] (CPF_Const | CPF_ExportObject | CPF_Component | CPF_EditInline)
-# 	class ULocalPlayerAudioParamsComponent_TA*         LocalPlayerAudioParamsComponent;               // 0x0878 (0x0008) [0x0000000004082008] (CPF_ExportObject | CPF_Transient | CPF_Component | CPF_EditInline)
-# 	float                                              TimeBelowSupersonicSpeed;                      // 0x0880 (0x0004) [0x0000000000002000] (CPF_Transient)
-# 	uint8_t                                           UnknownData02[0x4];                            // 0x0884 (0x0004) MISSED OFFSET
-# 	class UNetworkConfig_TA*                           NetworkConfig;                                 // 0x0888 (0x0008) [0x0000800000000000]               
-# 	struct FScriptDelegate                             __EventPRIChanged__Delegate;                   // 0x0890 (0x0018) [0x0000000000400000] (CPF_NeedCtorLink)
 
 class Vehicle(Pawn):
     size = 0x08A8

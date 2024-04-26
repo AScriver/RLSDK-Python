@@ -9,7 +9,9 @@ from .event_handling import Event
 from .events import EventFunctionHooked, EventBoostPadChanged, EventTypes, EventPlayerTick, EventRoundActiveStateChanged, EventResetPickups, EventGameEventStarted, EventKeyPressed, EventGameEventDestroyed
 from .game_objects import UClass, UFunction, GameEvent, TArray, UObject, FNameEntry, FName, Field, VehiclePickupBoost, GameViewportClient
 from .frida_script import frida_script
-
+from colorama import Fore, Back, Style, just_fix_windows_console
+from tqdm import tqdm
+import json
 
 PROCESS_NAME = "RocketLeague.exe"
 
@@ -40,46 +42,65 @@ END = '\033[0m'    # Réinitialiser le style
 
 # Event list
 
-ON_FUNCTION_HOOKED="on_function_hooked"
+ON_FUNCTION_HOOKED="on_function_called"
 
-
-
+DEFAULT_CONFIG = {
+    "gnames_offset": None,
+    "gobjects_offset": None,
+}
 
 
 class RLSDK:
 
     def __init__(self, hook_player_tick=False):
-      
+        
+
+
+        self.config = DEFAULT_CONFIG
+        
         try:
             self.pm = pymem.Pymem(PROCESS_NAME)
             self.frida = frida.attach(PROCESS_NAME)
         except:
-            raise Exception("Process not found")
-        
-        
-        print("Finding GNames offset...")
-        try:
-            self.g_names_offset = self.resolve_gnames_offset()
-        except:
-            raise Exception("GNames offset not found")
+            raise Exception(Fore.RED + "Rocket League not found. Make sure Rocket League is running." + END)
 
 
-        print("GNames offset: " + hex(self.g_names_offset))
-        
-        print("Finding GObjects offset...")
+        # open sdk_config.json file to read offsets
         
         try:
-            self.g_object_offset = self.resolve_gobjects_offset()
+            with open("sdk_config.json", "r") as file:
+                self.config = json.load(file)
+
+                if self.config["gnames_offset"]:
+                    self.g_names_offset = self.config["gnames_offset"]
+          
+                if self.config["gobjects_offset"]:
+                    self.g_object_offset = self.config["gobjects_offset"]
         except:
-            raise Exception("GObjects offset not found")
+            # create sdk_config.json file if it doesn't exist
+            with open("sdk_config.json", "w") as file:
+                json.dump(DEFAULT_CONFIG, file, indent=4)
         
-        print("GObjects offset: " + hex(self.g_object_offset))
+    
+
+        if self.config["gnames_offset"] == None or self.config["gobjects_offset"] == None:
+            try:
+                self.resolve_offsets()
+            except:
+                raise Exception(Fore.RED + "Offsets not found. Make sure Rocket League is running. If Rocket League is running, game memory structure may have changed and can't be scanned. Please try to obtain them by your own and update sdk_config.json" + END)
+            
+            # save offsets to sdk_config.json
+            
+            with open("sdk_config.json", "w") as file:
+                json.dump(self.config, file, indent=4)
+            
+        else:
+            print(Fore.GREEN + "Offsets found in sdk_config.json" + END)
 
         self.event = Event()
- 
-        self.address_indexed_gnames = {}
-        self.name_indexed_gnames = {}
+
         self.index_indexed_gnames = {}
+        self.gnames = {}
 
         self.static_classes = {}
         self.static_functions = {}
@@ -87,19 +108,36 @@ class RLSDK:
         self.scan_result = []
         self.scan_response_received_event = threading.Event()
 
-        self.load_gnames()
-        self.map_objects()
+        
+        try:
+            self.load_gnames()
+            self.map_objects()
+        except:
+            print(Fore.RED + "Error while loading GNames and mapping objects. Trying to resolve offsets" + END)
+           # If an error occurs, offset may be wrong, try to resolve them again
+            try:
+                self.resolve_offsets()
+                self.load_gnames()
+                self.map_objects()
+                
+                with open("sdk_config.json", "w") as file:
+                    json.dump(self.config, file, indent=4)
+            except:
+                raise Exception(Fore.RED + "Error while loading GNames and mapping objects. Make sure Rocket League is running." + END)
+
+            
 
         self.process_event_address = self.get_process_event_address()
         self.current_game_event = None
 
         if self.process_event_address == None:
-            print("Process event address not found")
+            print(Fore.RED + "ProcessEvent address not found. Make sure Rocket League is running." + END)
             return
 
         print("ProcessEvent Address: " + hex(self.process_event_address))
+        print(Fore.GREEN + "ProcessEvent address found: " + Fore.BLUE + hex(self.process_event_address) + END)
        
-        print("Injecting Frida script...")
+        print(Fore.YELLOW + "Injecting Frida script..." + END)
 
         self.frida_script = self.frida.create_script(frida_script)
         self.frida_script.load()
@@ -124,15 +162,43 @@ class RLSDK:
         if hook_player_tick:
             self.hook_function(FUNCTION_PLAYER_TICK, args_map=[(2, "float", "deltatime")])
 
-        
-        print("RLSDK initialized")
 
-        self.event.subscribe(EventTypes.ON_HOOKED_FUNCTION, self.on_function_hooked)
+        self.event.subscribe(EventTypes.ON_HOOKED_FUNCTION, self.on_function_called)
 
         self.field = Field(self)
+        
+        print(Fore.GREEN + "SDK initialized" + END)
       
-    
-    
+    # ==========================================================
+    # ================     Offsets finding     =================
+    # ==========================================================
+
+        
+    def resolve_offsets(self):
+
+        print(Fore.YELLOW + "Finding GNames offset..." + END)
+        try:
+            self.g_names_offset = self.resolve_gnames_offset()
+            self.config["gnames_offset"] = self.g_names_offset
+        except:
+            raise Exception("GNames offset not found")
+
+
+        print(Fore.GREEN + "GNames offset found at " + Fore.BLUE + hex(self.g_names_offset) + END)
+        
+        print(Fore.YELLOW + "Finding GObjects offset..." + END)
+        
+        try:
+            self.g_object_offset = self.resolve_gobjects_offset()
+            self.config["gobjects_offset"] = self.g_object_offset
+        except:
+            raise Exception(Fore.RED + "GObjects offset not found" + END)
+        
+        print(Fore.GREEN + "GObjects offset found at " + Fore.BLUE + hex(self.g_object_offset) + END)
+
+        
+        
+        
     def resolve_gobjects_offset(self):
         # Pattern recherché
         pattern = rb'\xE8....\x8B\x5D\xAF'
@@ -179,25 +245,79 @@ class RLSDK:
 
         return final_address - self.pm.base_address
 
-    def scan_functions(self, duration=10):
-        print("Scanning functions...")
+
+    def get_provider(self):
+        # Pattern recherché
+        pattern = rb'\xBA\xFA\x02\x00\x00\x48\x89\x05'
         
-        self.scan_response_received_event.clear()
-        self.frida_script.post({"type": "scan_functions", "duration": duration})
-        received = self.scan_response_received_event.wait(duration + 10)
-        if received:
-            print("Scan result received.")
-            return self.scan_result
-        else:
-            print("Scan timed out.")
+        # Trouver l'adresse de base du pattern
+        base_address = self.pm.pattern_scan_all(pattern, return_multiple=False)
+        if base_address is None:
             return None
+
+        # Calcul des différents offsets pour atteindre l'adresse finale
+        # Lire l'offset relatif à partir de l'adresse de base + 8 et ajouter à base_address
+        relative_offset = self.pm.read_int(base_address + 8)
+        final_address = base_address + 8 + relative_offset + 4  # +4 pour la taille de l'int lu
+
+        # Lire l'adresse du UObjectProvider à partir de l'adresse calculée
+        provider_address = self.pm.read_ulonglong(final_address)
+        if not provider_address:
+            return None
+
+        # La structure commence à provider_address + 0xD8
+        tarray_base_address = provider_address + 0xD8
+
+        # Création et retour de l'objet TArray
+        tarray = TArray(tarray_base_address, UObject, sdk=self)
         
+        return tarray
+    
+    
+    
+        
+    def load_gnames(self):
+
+        print(Fore.YELLOW + "Loading GNames..." + END)
+        gnames_entries_tarray = self.get_gnames_entries_tarray()
+        print(Fore.GREEN + "GNames count: " + Fore.BLUE + str(gnames_entries_tarray.get_count()) + END)
+        
+        
+        for gname_entry in tqdm(gnames_entries_tarray.get_items()):
+
+            if not gname_entry.address:
+                continue
+
+            self.gnames[gname_entry.get_index()] = gname_entry.get_name()
+            
+
+        print(Fore.GREEN + "GNames loaded" + END)
+
+    def map_objects(self):
+        print(Fore.YELLOW + "Mapping objects..." + END)
+        gobjects_tarray = self.get_gobjects_tarray()
+        for gobject in tqdm(gobjects_tarray.get_items()):
+            if not gobject.address:
+                continue
+            # if full_name content "Class " then it's a UClass
+
+            full_name = gobject.get_full_name() 
+            
+            if "Class " in full_name:
+                self.static_classes[full_name] = UClass(gobject.address, sdk=self)
+            elif "Function " in full_name:
+                self.static_functions[full_name] = UFunction(gobject.address, sdk=self)
+        
+        
+        print(Fore.GREEN + "UClasses: " + Fore.BLUE + str(len(self.static_classes)) + END)
+        print(Fore.GREEN + "UFunctions: " + Fore.BLUE + str(len(self.static_functions)) + END)
+    
     # ==========================================================
     # ================ INTERNAL EVENT HANDLING =================
     # ==========================================================
         
 
-    def on_function_hooked(self, event: EventFunctionHooked):
+    def on_function_called(self, event: EventFunctionHooked):
 
         function_name = event.function.get_full_name()
 
@@ -256,7 +376,7 @@ class RLSDK:
           
             data_bytes = bytes.fromhex(params)
             fname_entry_id = int.from_bytes(data_bytes[4:8], byteorder='little')
-            key_name = self.get_gname_by_index(fname_entry_id).get_name()
+            key_name = self.gnames[fname_entry_id]
             ev = EventKeyPressed(data_bytes, key_name)
 
             self.event.fire(EventTypes.ON_KEY_PRESSED, ev)
@@ -274,9 +394,23 @@ class RLSDK:
             self.event.fire(EventTypes.ON_GAME_EVENT_DESTROYED, EventGameEventDestroyed())
 
    
+    # ==========================================================
+    # ===================== DEBUG METHODS ======================
+    # ==========================================================
 
 
-
+    def scan_functions(self, duration=10):
+        print("Scanning functions...")
+        
+        self.scan_response_received_event.clear()
+        self.frida_script.post({"type": "scan_functions", "duration": duration})
+        received = self.scan_response_received_event.wait(duration + 10)
+        if received:
+            print("Scan result received.")
+            return self.scan_result
+        else:
+            print("Scan timed out.")
+            return None
 
     # ==========================================================
     # ================ EXTRACTION METHODS ======================
@@ -306,8 +440,7 @@ class RLSDK:
     # ==========================================================
 
     def on_frida_message(self, message, data):
-
-
+  
         if message['type'] == 'send':
             payload = message['payload']
             if payload.get('type') == 'hooked_function_fired':
@@ -320,9 +453,10 @@ class RLSDK:
                     function_address = int(f, 16)
                     self.scan_result.append(UFunction(function_address, sdk=self))
                     self.scan_response_received_event.set()
+            elif payload.get('type') == 'log':
+                print(Fore.MAGENTA + "Frida log: " + END + payload.get('message'))
            
-        elif message['type'] == 'log':
-            print(f"{GREEN}Log from Frida script:{END} {message.get('payload')}")
+
         else:
             print("Received message:", message)
 
@@ -344,7 +478,10 @@ class RLSDK:
         return None
 
 
-        
+    # ==========================================================
+    # ===================== Accessors ==========================
+    # ==========================================================
+    
     def get_game_event(self):
         return self.current_game_event
     
@@ -362,78 +499,28 @@ class RLSDK:
     def get_pm(self):
         return self.pm
     
-    def load_gnames(self):
-
-        print("Loading Gnames...")
-        gnames_entries_tarray = self.get_gnames_entries_tarray()
-        print("GNames count: "  + str(gnames_entries_tarray.get_count()))
-
-        for gname_entry in gnames_entries_tarray.get_items():
-
-            if not gname_entry.address:
-                continue
-
-            self.address_indexed_gnames[gname_entry.address] = gname_entry
-            self.name_indexed_gnames[gname_entry.get_name()] = gname_entry
-            self.index_indexed_gnames[gname_entry.get_index()] = gname_entry
-            
-
-        print("GNames loaded")
-
-    def map_objects(self):
-        print("Mapping objects...")
-        gobjects_tarray = self.get_gobjects_tarray()
-        for gobject in gobjects_tarray.get_items():
-            if not gobject.address:
-                continue
-            # if full_name content "Class " then it's a UClass
-
-      
-            if "Class " in gobject.get_full_name():
-                self.static_classes[gobject.get_full_name()] = UClass(gobject.address, sdk=self)
-            elif "Function " in gobject.get_full_name():
-                self.static_functions[gobject.get_full_name()] = UFunction(gobject.address, sdk=self)
-
-        print("UClasses: " + str(len(self.static_classes)))
-        print("UFunctions: " + str(len(self.static_functions)))
-
-    def get_fname_string(self, fname_address):
-        return  FName(fname_address, sdk=self).get_name()
-
-    def get_gname_by_address(self, address):
-        return self.address_indexed_gnames[address]
     
-    def get_gname_by_name(self, name):
-        return self.name_indexed_gnames[name]
+    # ==========================================================
+    # =====================   Methods  =========================
+    # ==========================================================
     
-    def get_gname_by_index(self, index):
-        if index not in self.index_indexed_gnames:
-            return None
-        return self.index_indexed_gnames[index]
 
+    def get_name(self, index):
+        return self.gnames.get(index)
+        
+        
     def find_static_function(self, function_name):
         return self.static_functions.get(function_name)
     
     def find_static_class(self, class_name):
         return self.static_classes.get(class_name)
     
+    
+    # Use to read cheat engine pointer offsets if needed
     def get_offsets_final_address(self, offsets):
         if self.pm != None:
             base_address = self.pm.base_address
-        
             for offset in offsets:
                 base_address = self.pm.read_ulonglong(base_address + offset)
             return base_address
         
-    # def get_all_instances_of(self, class_name, cast_class):
-    #     object_instances = []
-    #     for address, gobject in self.address_indexed_objects.items():
-    #         if not address:
-    #             continue
-     
-    #         if gobject and gobject.is_a(class_name):
-    #             if "Default__" not in gobject.get_full_name():
-    #                 object_instances.append(cast_class(address))
-
-    #     return object_instances
-    

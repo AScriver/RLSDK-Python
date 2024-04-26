@@ -9,6 +9,8 @@ readme = "README.md"
 python = "^3.11"
 frida = "^16.2.1"
 Pymem = "^1.13.1"
+colorama = "^0.4.6"
+tqdm = "^4.66.2"
 
 [build-system]
 requires = ["poetry-core"]
