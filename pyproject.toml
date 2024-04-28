@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rlsdk_python"
-version = "0.3.0"
+version = "0.4.0"
 description = ""
 authors = ["MarlburroW <nik0o@hotmail.com>"]
 readme = "README.md"

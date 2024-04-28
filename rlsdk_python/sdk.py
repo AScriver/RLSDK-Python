@@ -52,15 +52,15 @@ DEFAULT_CONFIG = {
 
 class RLSDK:
 
-    def __init__(self, hook_player_tick=False):
+    def __init__(self, hook_player_tick=False, pid=None):
         
-
+        self.pid = pid
 
         self.config = DEFAULT_CONFIG
         
         try:
-            self.pm = pymem.Pymem(PROCESS_NAME)
-            self.frida = frida.attach(PROCESS_NAME)
+            self.pm = pymem.Pymem(self.pid if self.pid else PROCESS_NAME)
+            self.frida = frida.attach(self.pid if self.pid else PROCESS_NAME)
         except:
             raise Exception(Fore.RED + "Rocket League not found. Make sure Rocket League is running." + END)
 
