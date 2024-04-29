@@ -112,7 +112,8 @@ class RLSDK:
         try:
             self.load_gnames()
             self.map_objects()
-        except:
+        except Exception as e:
+            print(e)
             print(Fore.RED + "Error while loading GNames and mapping objects. Trying to resolve offsets" + END)
            # If an error occurs, offset may be wrong, try to resolve them again
             try:
@@ -280,10 +281,10 @@ class RLSDK:
 
         print(Fore.YELLOW + "Loading GNames..." + END)
         gnames_entries_tarray = self.get_gnames_entries_tarray()
-        print(Fore.GREEN + "GNames count: " + Fore.BLUE + str(gnames_entries_tarray.get_count()) + END)
+        print(Fore.GREEN + "GNames count: " + Fore.BLUE + str(len(gnames_entries_tarray)) + END)
         
         
-        for gname_entry in tqdm(gnames_entries_tarray.get_items()):
+        for gname_entry in tqdm(gnames_entries_tarray):
 
             if not gname_entry.address:
                 continue
@@ -296,7 +297,9 @@ class RLSDK:
     def map_objects(self):
         print(Fore.YELLOW + "Mapping objects..." + END)
         gobjects_tarray = self.get_gobjects_tarray()
-        for gobject in tqdm(gobjects_tarray.get_items()):
+        print(Fore.GREEN + "GObjects count: " + Fore.BLUE + str(len(gobjects_tarray)) + END)
+        
+        for gobject in tqdm(gobjects_tarray):
             if not gobject.address:
                 continue
             # if full_name content "Class " then it's a UClass
