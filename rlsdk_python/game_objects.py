@@ -4,8 +4,10 @@ import time
 
 
 class Pointer:
-  def __init__(self, address, *, sdk=None):
-
+    def __repr__(self):
+        return f"<{self.__class__.__name__} at 0x{self.address:X}>"
+    
+    def __init__(self, address, *, sdk=None):
         if(address == None):
            raise ValueError("Address is None")
 
@@ -230,15 +232,29 @@ class GameEvent(UObject):
         return TArray(local_players_tarray_address, PlayerController, sdk=self.sdk).get_items()
 
 class TArray(Pointer):
-
     size = 0x10
 
     def __init__(self, address, class_type, sdk=None):
         super().__init__(address, sdk=sdk)
         self.class_type = class_type
 
-    def get_count(self):
+    def __len__(self):
         return self.sdk.pm.read_int(self.address + 0x8)
+        
+    def __iter__(self):
+        data_address = self.get_data_address()
+        for i in range(len(self)):
+            item_address = self.sdk.pm.read_ulonglong(data_address + i * 0x8)
+            yield self.class_type(item_address, sdk=self.sdk)
+            
+    def __contains__(self, item):
+        for x in self:
+            if x == item:
+                return True
+        return False
+
+    def get_count(self):
+        return self.__len__()
     
     def get_max(self):
         return self.sdk.pm.read_int(self.address + 0xC)
@@ -259,6 +275,7 @@ class TArray(Pointer):
         data_address = self.get_data_address()
         item_address = self.sdk.pm.read_ulonglong(data_address + index * 0x8)
         return self.class_type(item_address, sdk=self.sdk)
+
 
 class FVector(Pointer):
     size = 0x0C

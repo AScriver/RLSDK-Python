@@ -284,10 +284,10 @@ class RLSDK:
 
         print(Fore.YELLOW + "Loading GNames..." + END)
         gnames_entries_tarray = self.get_gnames_entries_tarray()
-        print(Fore.GREEN + "GNames count: " + Fore.BLUE + str(gnames_entries_tarray.get_count()) + END)
+        print(Fore.GREEN + "GNames count: " + Fore.BLUE + str(len(gnames_entries_tarray)) + END)
         
         
-        for gname_entry in tqdm(gnames_entries_tarray.get_items()):
+        for gname_entry in tqdm(gnames_entries_tarray):
 
             if not gname_entry.address:
                 continue
