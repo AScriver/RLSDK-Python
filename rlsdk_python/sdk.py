@@ -108,10 +108,14 @@ class RLSDK:
         self.scan_result = []
         self.scan_response_received_event = threading.Event()
 
-        
+
         try:
             self.load_gnames()
             self.map_objects()
+            
+            if len(self.gnames) == 0 or len(self.static_classes) == 0 or len(self.static_functions) == 0:
+                raise Exception("GNames or mapping objects not found")
+
         except:
             print(Fore.RED + "Error while loading GNames and mapping objects. Trying to resolve offsets" + END)
            # If an error occurs, offset may be wrong, try to resolve them again
@@ -297,16 +301,19 @@ class RLSDK:
         print(Fore.YELLOW + "Mapping objects..." + END)
         gobjects_tarray = self.get_gobjects_tarray()
         for gobject in tqdm(gobjects_tarray.get_items()):
-            if not gobject.address:
-                continue
-            # if full_name content "Class " then it's a UClass
+            try:
+                if not gobject.address:
+                    continue
+                # if full_name content "Class " then it's a UClass
 
-            full_name = gobject.get_full_name() 
-            
-            if "Class " in full_name:
-                self.static_classes[full_name] = UClass(gobject.address, sdk=self)
-            elif "Function " in full_name:
-                self.static_functions[full_name] = UFunction(gobject.address, sdk=self)
+                full_name = gobject.get_full_name() 
+                
+                if "Class " in full_name:
+                    self.static_classes[full_name] = UClass(gobject.address, sdk=self)
+                elif "Function " in full_name:
+                    self.static_functions[full_name] = UFunction(gobject.address, sdk=self)
+            except:
+                continue
         
         
         print(Fore.GREEN + "UClasses: " + Fore.BLUE + str(len(self.static_classes)) + END)
