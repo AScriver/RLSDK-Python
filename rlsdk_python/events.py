@@ -1,4 +1,4 @@
-from .game_objects import Car, UFunction, FName, BoostPad
+from .game_objects import Car, UFunction, FName, BoostPad, PlayerController
 from typing import Any
 from .event_handling import EventData
 
@@ -33,7 +33,14 @@ class EventGameEventStarted(EventData):
 class EventGameEventDestroyed(EventData):
     def __init__(self):
         pass
-
+    
+class EventChatMessage(EventData):
+    def __init__(self, player_controller: PlayerController, message: str, channel: int, preset: bool):
+        self.channel = channel
+        self.player_controller = player_controller
+        self.message = message
+        
+        
 class EventKeyPressed(EventData):
 
     types = {
@@ -54,7 +61,7 @@ class EventKeyPressed(EventData):
 
 
 class EventTypes:
-    ON_HOOKED_FUNCTION = "on_hooked_function"
+    ON_HOOKED_FUNCTION_CALLED = "on_hooked_function_called"
     ON_PLAYER_TICK = "on_player_tick"
     ON_ROUND_ACTIVE_STATE_CHANGED = "on_round_active_state_changed" 
     ON_RESET_PICKUPS = "on_reset_pickups"
@@ -62,4 +69,4 @@ class EventTypes:
     ON_KEY_PRESSED = "on_key_pressed"
     ON_BOOSTPAD_CHANGED = "on_boostpad_changed"
     ON_GAME_EVENT_DESTROYED = "on_game_event_destroyed"
-
+    ON_CHAT_MESSAGE = "on_chat_message"

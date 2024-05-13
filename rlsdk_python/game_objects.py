@@ -352,7 +352,7 @@ class FString(Pointer):
         return result
     
 
-class PlayerReplicationInfo(Pointer):
+class PlayerReplicationInfo(Actor):
     size = 0x0410
 
     def get_player_name(self):
@@ -605,7 +605,7 @@ class Team(TeamInfo):
         members_address = self.address + 0x0318
         return TArray(members_address, PRI, sdk=self.sdk).get_items()
 
-class Controller(Pointer):
+class Controller(Actor):
     size = 0x0474
 
     def get_player_num(self):
@@ -613,6 +613,26 @@ class Controller(Pointer):
 
 class PlayerController(Controller):
     size = 0x0D00
+    
+    def __init__(self, address, *, sdk=None):
+        super().__init__(address, sdk=sdk)
+        
+        self.chat_message = self.sdk.create_callable_function(
+            "Function TAGame.PlayerController_TA.ChatMessage_TA",
+            arg_types={
+                "InPRI": "pointer",
+                "Message": "fstring",  # La taille sera ajustée dynamiquement
+                "ChatChannel": "uint32",
+                "bPreset": "uint32"
+                
+            }
+        )
+    
+    
+    def chat(self, message, channel=0, preset=0):  
+        self.chat_message(self, InPRI=self.get_pri(), Message=message, ChatChannel=channel, bPreset=0)
+        
+        
  
     def get_pri(self):
         pri_address = self.sdk.pm.read_ulonglong(self.address + 0x0988)
@@ -621,6 +641,14 @@ class PlayerController(Controller):
     def get_car(self):
         car_address = self.sdk.pm.read_ulonglong(self.address + 0x0980)
         return Car(car_address, sdk=self.sdk)
+    
+    def get_hud(self):
+        hud_address = self.sdk.pm.read_ulonglong(self.address + 0x04F8)
+        return HUD(hud_address, sdk=self.sdk)
+    
+    def get_secondary_hud(self):
+        secondary_hud_address = self.sdk.pm.read_ulonglong(self.address + 0x0500)
+        return HUD(secondary_hud_address, sdk=self.sdk)
     
 
 class VehicleInputs(Pointer):
@@ -794,6 +822,23 @@ class GameViewportClient(UObject):
         return GameEvent(game_event_address, sdk=self.sdk)
 
     
+class Canvas(UObject):
+     size = 0x00C8
+     
+
+class HUD(UObject):
+    size = 0x0308
+    
+    def get_player_owner(self):
+        player_controller_address = self.sdk.pm.read_ulonglong(self.address + 0x0278)
+        return PlayerController(player_controller_address, sdk=self.sdk)
+    
+    def get_canvas(self):
+        canvas_address = self.sdk.pm.read_ulonglong(self.address + 0x0280)
+        return Canvas(canvas_address, sdk=self.sdk)
+
+
+
 # Following classes are not pointing to any memory address, they are just data containers
     
 
@@ -907,7 +952,11 @@ class Field():
         pad.location.y = y
         pad.location.z = z
         
-        
+
+
+
+
+
 
 # struct UGameViewportClient_TA_execHandleKeyPress_Params
 # {

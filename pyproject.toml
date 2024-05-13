@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rlsdk_python"
-version = "0.4.0"
+version = "0.5.0"
 description = ""
 authors = ["MarlburroW <nik0o@hotmail.com>"]
 readme = "README.md"
@@ -11,6 +11,7 @@ frida = "^16.2.1"
 Pymem = "^1.13.1"
 colorama = "^0.4.6"
 tqdm = "^4.66.2"
+tabulate = "^0.9.0"
 
 [build-system]
 requires = ["poetry-core"]
